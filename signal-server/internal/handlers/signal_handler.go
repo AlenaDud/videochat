@@ -1,41 +1,97 @@
-package handlers
+package handler
 
 import (
 	"github.com/gorilla/websocket"
+	"log"
 	"net/http"
-	"signal-server/internal/services"
+	"webrtc-microservices/signal-server/pkg/grpc"
 )
 
 type SignalHandler struct {
-	signalingService services.SignalingService
-	upgrader         websocket.Upgrader
+	grpcClient grpc.SFUClient
 }
 
-func NewSignalHandler(signalingService services.SignalingService) *SignalHandler {
-	return &SignalHandler{
-		signalingService: signalingService,
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
-		},
-	}
+func NewSignalHandler(grpcClient grpc.SFUClient) *SignalHandler {
+	return &SignalHandler{grpcClient: grpcClient}
 }
 
+// WebSocket обработка сообщений от клиентов
 func (h *SignalHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := h.upgrader.Upgrade(w, r, nil)
+	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		http.Error(w, "Could not open WebSocket connection", http.StatusBadRequest)
+		log.Println("WebSocket connection error:", err)
 		return
 	}
 	defer conn.Close()
 
-	// Обработка сообщений WebSocket
 	for {
-		messageType, message, err := conn.ReadMessage()
+		var msg map[string]interface{}
+		err := conn.ReadJSON(&msg)
 		if err != nil {
+			log.Println("Error reading message:", err)
 			break
 		}
 
-		// Обработка сигналов через сервисный слой
-		h.signalingService.ProcessMessage(conn, messageType, message)
+		switch msg["type"] {
+		case "offer":
+			h.handleOffer(conn, msg)
+		case "answer":
+			h.handleAnswer(conn, msg)
+		case "ice-candidate":
+			h.handleIceCandidate(conn, msg)
+		default:
+			log.Println("Unknown message type:", msg["type"])
+		}
 	}
+}
+
+// Обработка offer от клиента
+func (h *SignalHandler) handleOffer(conn *websocket.Conn, msg map[string]interface{}) {
+	sessionID := msg["session_id"].(string)
+	userID := msg["user_id"].(string)
+	offer := msg["offer"].(string)
+
+	// Отправка offer на SFU
+	response, err := h.grpcClient.SendOffer(sessionID, userID, offer)
+	if err != nil {
+		log.Println("Error sending offer to SFU:", err)
+		return
+	}
+
+	// Отправка ответа клиенту
+	conn.WriteJSON(map[string]string{"status": response.Status})
+}
+
+// Обработка answer от клиента
+func (h *SignalHandler) handleAnswer(conn *websocket.Conn, msg map[string]interface{}) {
+	sessionID := msg["session_id"].(string)
+	userID := msg["user_id"].(string)
+	answer := msg["answer"].(string)
+
+	// Отправка answer на SFU
+	response, err := h.grpcClient.SendAnswer(sessionID, userID, answer)
+	if err != nil {
+		log.Println("Error sending answer to SFU:", err)
+		return
+	}
+
+	// Отправка ответа клиенту
+	conn.WriteJSON(map[string]string{"status": response.Status})
+}
+
+// Обработка ICE кандидатов от клиента
+func (h *SignalHandler) handleIceCandidate(conn *websocket.Conn, msg map[string]interface{}) {
+	sessionID := msg["session_id"].(string)
+	userID := msg["user_id"].(string)
+	candidate := msg["candidate"].(string)
+
+	// Отправка ICE кандидата на SFU
+	response, err := h.grpcClient.SendIceCandidate(sessionID, userID, candidate)
+	if err != nil {
+		log.Println("Error sending ICE candidate to SFU:", err)
+		return
+	}
+
+	// Отправка ответа клиенту
+	conn.WriteJSON(map[string]string{"status": response.Status})
 }

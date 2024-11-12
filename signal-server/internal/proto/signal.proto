@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package signal;
+
+service SignalService {
+    // Метод для отправки offer от клиента
+    rpc SendOffer (OfferRequest) returns (OfferResponse);
+
+    // Метод для отправки answer от клиента
+    rpc SendAnswer (AnswerRequest) returns (AnswerResponse);
+
+    // Метод для передачи ICE candidates
+    rpc SendIceCandidate (IceCandidateRequest) returns (IceCandidateResponse);
+}
+
+message OfferRequest {
+    string session_id = 1;
+    string user_id = 2;
+    string offer = 3;  // SDP offer
+}
+
+message AnswerRequest {
+    string session_id = 1;
+    string user_id = 2;
+    string answer = 3;  // SDP answer
+}
+
+message IceCandidateRequest {
+    string session_id = 1;
+    string user_id = 2;
+    string candidate = 3;  // ICE candidate
+}
+
+message OfferResponse {
+    string status = 1;
+}
+
+message AnswerResponse {
+    string status = 1;
+}
+
+message IceCandidateResponse {
+    string status = 1;
+}

@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package sfu;
+
+service SFUService {
+    // Метод для регистрации нового медиа-потока
+    rpc RegisterStream (StreamRequest) returns (StreamResponse);
+
+    // Метод для обработки ICE candidates
+    rpc HandleIceCandidate (IceCandidateRequest) returns (IceCandidateResponse);
+}
+
+message StreamRequest {
+    string session_id = 1;
+    string user_id = 2;
+    string stream_info = 3;  // Информация о медиа-потоке
+}
+
+message IceCandidateRequest {
+    string session_id = 1;
+    string user_id = 2;
+    string candidate = 3;  // ICE candidate
+}
+
+message StreamResponse {
+    string status = 1;
+}
+
+message IceCandidateResponse {
+    string status = 1;
+}
