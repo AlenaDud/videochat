@@ -1,19 +1,18 @@
 package services
 
 import (
-	"github.com/gorilla/websocket"
+	"signal-server/internal/clients/sfu"
 )
 
-type SignalingService struct {
-	// Взаимодействие с другими микросервисами, если требуется (Auth, Room Management и т.д.)
+type SignalService struct {
+	sfuClient *sfu.SFUClient
 }
 
-func NewSignalingService() *SignalingService {
-	return &SignalingService{}
+func NewSignalService(sfuClient *sfu.SFUClient) *SignalService {
+	return &SignalService{sfuClient: sfuClient}
 }
 
-func (s *SignalingService) ProcessMessage(conn *websocket.Conn, messageType int, message []byte) error {
-	// Обработка полученного сообщения (SDP/ICE)
-	// Логика маршрутизации сообщения к соответствующему клиенту
-	return nil
+func (s *SignalService) HandleSDP(sdp []byte) error {
+	// Отправка SDP в SFU сервис
+	return s.sfuClient.SendSDP(sdp)
 }

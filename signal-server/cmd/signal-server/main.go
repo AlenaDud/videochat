@@ -1,27 +1,17 @@
 package main
 
 import (
-	"log"
-	"net/http"
+	"signal-server/app"
 	"signal-server/config"
-	"signal-server/internal/handler"
-	"signal-server/pkg/grpc"
 )
 
 func main() {
-	// Инициализация конфигурации
-	cfg := config.LoadConfig()
-
-	// Инициализация gRPC клиента
-	grpcClient := grpc.NewSFUClient(cfg.SFUAddress)
-
-	// Инициализация обработчиков
-	signalHandler := handler.NewSignalHandler(grpcClient)
-
-	// Настройка WebSocket сервера
-	http.HandleFunc("/ws", signalHandler.HandleWebSocket)
-
-	// Запуск HTTP сервера
-	log.Printf("Signal server started on %s", cfg.ServerAddress)
-	log.Fatal(http.ListenAndServe(cfg.ServerAddress, nil))
+	cfg := config.New()
+	application, err := app.NewApp(cfg)
+	if err != nil {
+		panic(err)
+	}
+	if err := application.Run(); err != nil {
+		panic(err)
+	}
 }

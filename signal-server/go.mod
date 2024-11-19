@@ -5,8 +5,8 @@ go 1.22.7
 toolchain go1.22.9
 
 require (
-	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
+	github.com/kelseyhightower/envconfig v1.4.0
 	google.golang.org/grpc v1.68.0
 )
 
