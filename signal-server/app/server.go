@@ -2,57 +2,48 @@ package app
 
 import (
 	"fmt"
+	"github.com/rs/zerolog"
+	"golang.org/x/sync/errgroup"
 	"signal-server/config"
-	"signal-server/internal/api/grpc"
 	"signal-server/internal/api/websocket"
-	"signal-server/internal/clients/sfu"
 	"signal-server/internal/services"
-	"sync"
+	"signal-server/pkg/logging"
 )
 
 type App struct {
 	cfg           *config.Config
-	grpcServer    *grpc.Server
-	wsServer      *websocket.Server
+	logger        *zerolog.Logger
 	signalService *services.SignalService
 }
 
-func NewApp(cfg *config.Config) (*App, error) {
-	sfuClient, err := sfu.NewSFUClient(cfg.SFUServiceAddr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SFU: %w", err)
-	}
+func NewApp(
+	cfg *config.Config,
+) (*App, error) {
+	logger := logging.NewLogger(cfg.Logging)
 
-	signalService := services.NewSignalService(sfuClient)
-	wsServer := websocket.NewServer(signalService)
-	grpcServer := grpc.NewServer(signalService)
+	signalService := services.NewSignalService()
 
 	return &App{
 		cfg:           cfg,
-		grpcServer:    grpcServer,
-		wsServer:      wsServer,
+		logger:        logger,
 		signalService: signalService,
 	}, nil
 }
 
-func (a *App) Run() error {
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
+func (a *App) RunApp() error {
+	group := new(errgroup.Group)
+	group.Go(func() error {
+		err := websocket.NewWebsocketAPI(a.cfg, a.logger, a.signalService)
+		return fmt.Errorf("[RunApp] run WebSocketApi: %w", err)
+	})
+	//group.Go(func() error {
+	//	err := grpc.NewGrpcApi(a.cfg, a.logger, a.signalService)
+	//	return fmt.Errorf("[RunApp] run GrpcApi: %w", err)
+	//})
 
-	go func() {
-		defer wg.Done()
-		if err := a.grpcServer.Start(a.cfg.GRPCPort); err != nil {
-			fmt.Println("Failed to start gRPC server:", err)
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if err := a.wsServer.Start(a.cfg.WebSocketPort); err != nil {
-			fmt.Println("Failed to start WebSocket server:", err)
-		}
-	}()
-
-	wg.Wait()
+	if err := group.Wait(); err != nil {
+		return fmt.Errorf("[RunApp] run %w", err)
+	}
 	return nil
+
 }

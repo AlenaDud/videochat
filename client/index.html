@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple WebRTC Conference</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="login" class="container">
+        <h1>Join Conference</h1>
+        <input type="text" id="username" placeholder="Enter your name" required />
+        <input type="text" id="room" placeholder="Enter room name" required />
+        <button id="joinRoom" class="button">Join</button>
+    </div>
+
+    <div id="conference" hidden class="container">
+        <h1>Room: <span id="roomName"></span></h1>
+        <div id="videoContainer">
+            <video id="localVideo" autoplay muted class="video"></video>
+            <div id="remoteVideos"></div>
+        </div>
+        <div id="chat" class="chat">
+            <div id="messages" class="messages"></div>
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="Type a message" />
+                <button id="sendMessage" class="button">Send</button>
+            </div>
+        </div>
+        <button id="leaveRoom" class="button button-danger">Leave Room</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

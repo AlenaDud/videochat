@@ -1,49 +1,59 @@
 package websocket
 
 import (
-	"log"
-	"net/http"
-	"sync"
-
 	"github.com/gorilla/websocket"
-	"signal-server/internal/services"
+	"github.com/rs/zerolog"
+	"net/http"
+	"signal-server/internal/api"
+	"signal-server/internal/models"
 )
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-type Server struct {
-	signalService *services.SignalService
-	mu            sync.Mutex
+type SignalHandler struct {
+	logger       *zerolog.Logger
+	signalServer api.SignalService
 }
 
-func NewServer(signalService *services.SignalService) *Server {
-	return &Server{signalService: signalService}
+func NewSignalHandler(
+	logger *zerolog.Logger,
+	signalServer api.SignalService,
+) *SignalHandler {
+	return &SignalHandler{
+		logger:       logger,
+		signalServer: signalServer,
+	}
 }
 
-func (s *Server) Start(port string) error {
-	http.HandleFunc("/ws", s.handleConnection)
-	log.Println("WebSocket server started on port", port)
-	return http.ListenAndServe(":"+port, nil)
-}
-
-func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
+func (h *SignalHandler) handleSDPOffer(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Failed to upgrade connection:", err)
+		h.logger.Error().Err(err).Msg("Failed to upgrade to WebSocket")
 		return
 	}
 	defer conn.Close()
 
 	for {
-		_, message, err := conn.ReadMessage()
+		var offer models.SDPMessage
+		err := conn.ReadJSON(&offer)
 		if err != nil {
-			log.Println("Read error:", err)
+			h.logger.Error().Msgf("[handleSDPOffer] read offer from ws: %v", err)
 			break
 		}
+		h.logger.Info().Msgf("[handleSDPOffer] offer received: %v", offer)
 
-		// Обработка сообщения и отправка в SFU
-		go s.signalService.HandleSDP(message)
+		//answer, err := h.signalServer.SendOffer(offer) // Передача в SFU
+		//if err != nil {
+		//	h.logger.Error().Err(err).Msg("Failed to forward SDP offer to SFU")
+		//	break
+		//}
+		//
+		//err = conn.WriteJSON(answer) // Возврат SDP Answer клиенту
+		//if err != nil {
+		//	h.logger.Error().Err(err).Msg("Failed to send SDP answer to client")
+		//	break
+		//}
 	}
 }
