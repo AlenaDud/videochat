@@ -16,7 +16,12 @@ func NewRestApi(cfg *config.Config, logger *zerolog.Logger) error {
 
 	router := mux.NewRouter()
 
+	// serve html
 	router.HandleFunc("/", clientRestHandler.MainPage).Methods(http.MethodGet)
+	router.HandleFunc("/login", clientRestHandler.Login).Methods(http.MethodGet)
+	router.HandleFunc("/register", clientRestHandler.Register).Methods(http.MethodGet)
+
+	// service >> grpc
 	router.HandleFunc("/check-auth", clientRestHandler.Check).Methods(http.MethodPost)
 	router.HandleFunc("/login", clientRestHandler.Login).Methods(http.MethodPost)
 	router.HandleFunc("/register", clientRestHandler.Register).Methods(http.MethodPost)
